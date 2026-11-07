@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" office:version="1.2">
+  <office:automatic-styles>
+    <style:style style:name="H1" style:family="paragraph">
+      <style:paragraph-properties fo:margin-top="0.45cm" fo:margin-bottom="0.2cm" fo:keep-with-next="always"/>
+      <style:text-properties fo:font-size="16pt" fo:font-weight="bold" fo:color="#1f4e78"/>
+    </style:style>
+    <style:style style:name="H2" style:family="paragraph">
+      <style:paragraph-properties fo:margin-top="0.35cm" fo:margin-bottom="0.15cm" fo:keep-with-next="always"/>
+      <style:text-properties fo:font-size="13pt" fo:font-weight="bold" fo:color="#1f4e78"/>
+    </style:style>
+    <style:style style:name="P" style:family="paragraph">
+      <style:paragraph-properties fo:margin-bottom="0.15cm"/>
+    </style:style>
+    <style:style style:name="LI" style:family="paragraph">
+      <style:paragraph-properties fo:margin-left="0.6cm" fo:margin-bottom="0.1cm"/>
+    </style:style>
+    <style:style style:name="TB" style:family="text">
+      <style:text-properties fo:font-weight="bold"/>
+    </style:style>
+    <style:style style:name="TI" style:family="text">
+      <style:text-properties fo:font-style="italic" fo:color="#787878"/>
+    </style:style>
+    <style:style style:name="Tb1" style:family="table">
+      <style:table-properties style:width="16.5cm" table:align="margins"/>
+    </style:style>
+    <style:style style:name="Tb1c1" style:family="table-column">
+      <style:table-column-properties style:column-width="4.2cm"/>
+    </style:style>
+    <style:style style:name="Tb1c2" style:family="table-column">
+      <style:table-column-properties style:column-width="4.8cm"/>
+    </style:style>
+    <style:style style:name="Tb1c3" style:family="table-column">
+      <style:table-column-properties style:column-width="7.5cm"/>
+    </style:style>
+    <style:style style:name="Tb2c1" style:family="table-column">
+      <style:table-column-properties style:column-width="4.5cm"/>
+    </style:style>
+    <style:style style:name="Tb2c2" style:family="table-column">
+      <style:table-column-properties style:column-width="12cm"/>
+    </style:style>
+    <style:style style:name="Cell" style:family="table-cell">
+      <style:table-cell-properties fo:border="0.5pt solid #a6a6a6" fo:padding="0.08cm"/>
+    </style:style>
+  </office:automatic-styles>
+  <office:body>
+    <office:text>
+      <text:h text:outline-level="1" text:style-name="H1">Planning d'équipe : guide d'installation et d'utilisation</text:h>
+      <text:p text:style-name="P">Cet outil gère les plannings d'une équipe : saisie des tâches, chaînage automatique, jours fériés, congés et formations, grille de charge par personne et par semaine avec code couleur, et résumé numérique. Il se compose d'un module VBA unique qui construit lui-même le classeur Excel : 5 feuilles, mise en forme, menus déroulants, boutons et données d'exemple.</text:p>
+      <text:h text:outline-level="1" text:style-name="H1">1. Installation (5 minutes)</text:h>
+      <text:p text:style-name="LI">1. Ouvrez Excel (desktop Windows) et créez un nouveau classeur.</text:p>
+      <text:p text:style-name="LI">2. Enregistrez-le immédiatement au format « Classeur Excel (prenant en charge les macros) » (.xlsm).</text:p>
+      <text:p text:style-name="LI">3. Appuyez sur Alt + F11 pour ouvrir l'éditeur VBA.</text:p>
+      <text:p text:style-name="LI">4. Menu Insertion &gt; Module, puis collez la totalité du code du fichier PlanningEquipe.bas (ou Fichier &gt; Importer un fichier et sélectionnez directement le fichier .bas).</text:p>
+      <text:p text:style-name="LI">5. Revenez dans Excel, appuyez sur Alt + F8, choisissez « ConstruireClasseur » et exécutez.</text:p>
+      <text:p text:style-name="LI">6. Confirmez le message : les 5 feuilles sont créées, mises en forme et préremplies avec des exemples. Enregistrez.</text:p>
+      <text:p text:style-name="P">Si Excel vous demande d'activer les macros à l'ouverture du fichier, répondez « Activer ».</text:p>
+      <text:p text:style-name="P"><text:span text:style-name="TI">Compatibilité : Excel desktop Windows, version 2010 ou ultérieure. Les macros ne fonctionnent ni dans Excel Online ni dans Excel mobile.</text:span></text:p>
+      <text:h text:outline-level="1" text:style-name="H1">2. Les 5 feuilles</text:h>
+      <text:h text:outline-level="2" text:style-name="H2">Saisie (saisie des tâches)</text:h>
+      <text:p text:style-name="P">Une ligne = une tâche. Saisissez simplement à la suite : le tableau s'étend automatiquement avec ses menus déroulants.</text:p>
+      <table:table table:style-name="Tb1">
+        <table:table-column table:style-name="Tb1c1"/>
+        <table:table-column table:style-name="Tb1c2"/>
+        <table:table-column table:style-name="Tb1c3"/>
+        <table:table-header-rows>
+          <table:table-row>
+            <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P"><text:span text:style-name="TB">Colonne</text:span></text:p></table:table-cell>
+            <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P"><text:span text:style-name="TB">Contenu</text:span></text:p></table:table-cell>
+            <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P"><text:span text:style-name="TB">Règle</text:span></text:p></table:table-cell>
+          </table:table-row>
+        </table:table-header-rows>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">N°</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Numéro</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Automatique</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Prénom</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Menu déroulant</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Doit exister dans la feuille Équipe</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Projet, Description</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Texte libre</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">-</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Durée (j ouvrés)</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Nombre entier de jours ouvrés</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">-</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Début (vide = auto)</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Date de début</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Vide = la tâche s'enchaîne après la fin de la tâche précédente de la même personne (ordre du tableau)</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Début effectif, Fin calculée</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Dates</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Calculées automatiquement (en-têtes gris bleu), tiennent compte des fériés et des absences</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Avancement (%)</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">De 0 à 100</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Saisissez « 40 » pour 40 %</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">État</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Menu déroulant</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Renseigné automatiquement si laissé vide (0 % = non commencée, 1 à 99 % = en cours, 100 % = terminée)</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Retard (j)</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Nombre</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Calculé : jours ouvrés entre la fin calculée et aujourd'hui, si la tâche n'est pas terminée</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Notes</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Texte libre</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">-</text:p></table:table-cell>
+        </table:table-row>
+      </table:table>
+      <text:p text:style-name="P"/>
+      <text:p text:style-name="P">Les volets sont figés (prénom toujours visible) et les cellules d'État sont colorées automatiquement : vert = terminée, bleu = en cours, gris = non commencée, rouge = en retard.</text:p>
+      <text:p text:style-name="P">Le bouton « Mettre à jour le planning » recalcule tout : dates, retards, feuille Charge et feuille Résumé. Cliquez-y après chaque saisie ou modification de l'équipe, d'un congé ou d'un jour férié.</text:p>
+      <text:h text:outline-level="2" text:style-name="H2">Charge (vision graphique)</text:h>
+      <text:p text:style-name="P">Grille croisée : une ligne par personne, une colonne par semaine (numéro de semaine ISO et date du lundi). Chaque cellule affiche la charge planifiée en jours, colorée selon le rapport charge / capacité :</text:p>
+      <text:p text:style-name="LI">• Vert clair : sous-charge</text:p>
+      <text:p text:style-name="LI">• Vert : charge correcte (jusqu'à 100 %)</text:p>
+      <text:p text:style-name="LI">• Orange puis rouge : surcharge modérée puis élevée</text:p>
+      <text:p text:style-name="LI">• Blanc : aucune tâche planifiée</text:p>
+      <text:p text:style-name="LI">• Gris : semaine sans aucun jour disponible</text:p>
+      <text:p text:style-name="P">En bas de la grille : ligne « Dispo équipe », ligne « TOTAL charge », grille des absences (C = jours de congé, F = jours de formation) et légende complète.</text:p>
+      <text:h text:outline-level="2" text:style-name="H2">Résumé (vision numérique)</text:h>
+      <text:p text:style-name="P">Quatre blocs : charge par personne (taux de charge, nombre de tâches par état, retard cumulé), par projet (charge, avancement moyen pondéré, tâches en retard), par semaine (charge et capacité de l'équipe) et compteur global des tâches.</text:p>
+      <text:h text:outline-level="2" text:style-name="H2">Équipe (configuration)</text:h>
+      <text:p text:style-name="LI">• Membres : prénom + capacité en jours/semaine (laisser vide = capacité par défaut). Exemple : 4 pour un temps partiel.</text:p>
+      <text:p text:style-name="LI">• Absences : congés, formations ou autre absence, avec date de début et de fin. Un jour d'absence n'est ni travaillé ni compté dans la charge, et décale les tâches chaînées.</text:p>
+      <text:p text:style-name="LI">• Paramètres : début de la grille (vide = automatique, le plus ancien entre aujourd'hui et les débuts de tâches), nombre de semaines (26 par défaut, jusqu'à 104), seuils de sous-charge et de surcharge en %, capacité par défaut.</text:p>
+      <text:h text:outline-level="2" text:style-name="H2">Jours Fériés</text:h>
+      <text:p text:style-name="P">Jours fériés français de 2026 et 2027, calculés automatiquement (Pâques, Ascension, Pentecôte inclus). Ajoutez librement vos jours exceptionnels (ponts, fermeture d'entreprise) à la suite : ils sont pris en compte dès la prochaine mise à jour. Pour une nouvelle année, exécutez la macro « AjouterFeriesAnnee » (Alt + F8).</text:p>
+      <text:h text:outline-level="1" text:style-name="H1">3. Règles de calcul appliquées</text:h>
+      <text:p text:style-name="LI">• Jour disponible = lundi à vendredi, hors jours fériés, hors absence de la personne.</text:p>
+      <text:p text:style-name="LI">• Fin calculée = durée en jours disponibles à partir du début effectif (un congé pendant la tâche la décale).</text:p>
+      <text:p text:style-name="LI">• Chaînage : un Début vide place la tâche au prochain jour disponible après la fin de la tâche précédente de la même personne, dans l'ordre du tableau. Sans tâche précédente : au prochain jour disponible à partir d'aujourd'hui.</text:p>
+      <text:p text:style-name="LI">• Charge d'une semaine = jours couverts par les tâches pendant la semaine, hors absences, ramenés à la capacité de la personne.</text:p>
+      <text:p text:style-name="LI">• Retard = jours ouvrés entre la fin calculée et aujourd'hui, si la tâche n'est pas terminée.</text:p>
+      <text:h text:outline-level="1" text:style-name="H1">4. Personnalisation</text:h>
+      <text:p text:style-name="LI">• Couleurs : dans le code VBA, procédure InitCouleurs (vert clair, vert, orange, rouge, congé, formation, gris).</text:p>
+      <text:p text:style-name="LI">• Seuils : directement dans la feuille Équipe (cellules M4 et M5), aucun code à modifier.</text:p>
+      <text:p text:style-name="LI">• Nouvelle année : macro AjouterFeriesAnnee.</text:p>
+      <text:p text:style-name="LI">• Nouveau membre : ajoutez une ligne dans Équipe ; il apparaît dans le menu déroulant de Saisie, dans la grille Charge et dans le Résumé.</text:p>
+      <text:p text:style-name="LI">• Ne renommez ni les feuilles ni le tableau « TblSaisie », et n'insérez pas de colonnes à l'intérieur du tableau de saisie : le code VBA s'appuie sur ces noms.</text:p>
+      <text:h text:outline-level="1" text:style-name="H1">5. Macros disponibles (Alt + F8)</text:h>
+      <table:table table:style-name="Tb1">
+        <table:table-column table:style-name="Tb2c1"/>
+        <table:table-column table:style-name="Tb2c2"/>
+        <table:table-header-rows>
+          <table:table-row>
+            <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P"><text:span text:style-name="TB">Macro</text:span></text:p></table:table-cell>
+            <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P"><text:span text:style-name="TB">Rôle</text:span></text:p></table:table-cell>
+          </table:table-row>
+        </table:table-header-rows>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">ConstruireClasseur</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Construit ou reconstruit les 5 feuilles (efface les données existantes)</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">MajTout</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Recalcule les tâches, la grille de charge et le résumé (identique au bouton)</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">AjouterFeriesAnnee</text:p></table:table-cell>
+          <table:table-cell table:style-name="Cell" office:value-type="string"><text:p text:style-name="P">Ajoute les jours fériés français d'une année</text:p></table:table-cell>
+        </table:table-row>
+      </table:table>
+      <text:p text:style-name="P"/>
+      <text:h text:outline-level="1" text:style-name="H1">6. Premiers pas suggérés</text:h>
+      <text:p text:style-name="LI">1. Remplacez les membres d'exemple dans la feuille Équipe par votre équipe.</text:p>
+      <text:p text:style-name="LI">2. Saisissez vos congés et formations dans le bloc Absences.</text:p>
+      <text:p text:style-name="LI">3. Videz les tâches d'exemple de la feuille Saisie et saisissez vos tâches réelles.</text:p>
+      <text:p text:style-name="LI">4. Cliquez sur « Mettre à jour le planning » et vérifiez les feuilles Charge et Résumé.</text:p>
+    </office:text>
+  </office:body>
+</office:document-content>
