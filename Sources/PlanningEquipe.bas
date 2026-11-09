@@ -1104,6 +1104,10 @@ Public Sub ConstruireClasseur()
     s.Columns(12).ColumnWidth = 36
     s.Columns(13).ColumnWidth = 10
 
+    ' Nom dynamique pour la liste des membres : créé AVANT les validations qui
+    ' l'utilisent, sinon erreur "ListeEquipe n'est pas défini" à l'exécution
+    ThisWorkbook.Names.Add Name:="ListeEquipe", RefersTo:="='" & SH_EQ & "'!$A$3:$A$200"
+
     ' Validations de la feuille Équipe
     With s.Range("F3:F500").Validation
         .Delete
@@ -1113,9 +1117,6 @@ Public Sub ConstruireClasseur()
         .Delete
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Formula1:="Congé,Formation,Autre"
     End With
-
-    ' Nom dynamique pour la liste des membres
-    ThisWorkbook.Names.Add Name:="ListeEquipe", RefersTo:="=" & SH_EQ & "!$A$3:$A$200"
 
     ' ============================ FEUILLE JOURS FÉRIÉS ============================
     Set s = FeuilleNeuve(SH_FER, RGB(128, 128, 128))
