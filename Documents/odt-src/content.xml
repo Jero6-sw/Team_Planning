@@ -51,11 +51,11 @@
       <text:p text:style-name="LI">1. Ouvrez Excel (desktop Windows) et créez un nouveau classeur.</text:p>
       <text:p text:style-name="LI">2. Enregistrez-le immédiatement au format « Classeur Excel (prenant en charge les macros) » (.xlsm).</text:p>
       <text:p text:style-name="LI">3. Appuyez sur Alt + F11 pour ouvrir l'éditeur VBA.</text:p>
-      <text:p text:style-name="LI">4. Menu Insertion &gt; Module, puis collez la totalité du code du fichier PlanningEquipe.bas (ou Fichier &gt; Importer un fichier et sélectionnez directement le fichier .bas).</text:p>
+      <text:p text:style-name="LI">4. Menu Fichier &gt; Importer un fichier, et sélectionnez le fichier Sources/PlanningEquipe.bas (encodage ANSI : les accents sont préservés à l'import). Alternative : ouvrez Sources/PlanningEquipe_UTF8.bas sur GitHub, copiez le code sans la première ligne « Attribute VB_Name » et collez-le dans un nouveau module (Insertion &gt; Module).</text:p>
       <text:p text:style-name="LI">5. Revenez dans Excel, appuyez sur Alt + F8, choisissez « ConstruireClasseur » et exécutez.</text:p>
       <text:p text:style-name="LI">6. Confirmez le message : les 5 feuilles sont créées, mises en forme et préremplies avec des exemples. Enregistrez.</text:p>
       <text:p text:style-name="P">Si Excel vous demande d'activer les macros à l'ouverture du fichier, répondez « Activer ».</text:p>
-      <text:p text:style-name="P"><text:span text:style-name="TI">Compatibilité : Excel desktop Windows, version 2010 ou ultérieure. Les macros ne fonctionnent ni dans Excel Online ni dans Excel mobile.</text:span></text:p>
+      <text:p text:style-name="P"><text:span text:style-name="TI">Compatibilité : vérifié avec Office 2024 et Microsoft 365, compatible Excel 2016/2019/2021 (Excel desktop Windows, 32 et 64 bits). Les macros ne fonctionnent ni dans Excel Online ni dans Excel mobile.</text:span></text:p>
       <text:h text:outline-level="1" text:style-name="H1">2. Les 5 feuilles</text:h>
       <text:h text:outline-level="2" text:style-name="H2">Saisie (saisie des tâches)</text:h>
       <text:p text:style-name="P">Une ligne = une tâche. Saisissez simplement à la suite : le tableau s'étend automatiquement avec ses menus déroulants.</text:p>
