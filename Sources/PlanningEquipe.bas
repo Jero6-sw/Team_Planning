@@ -22,7 +22,16 @@ Option Explicit
 '      de la personne (congés, formations, autre)
 '    - Dans Saisie, un Début laissé vide = la tâche s'enchaîne après la fin
 '      de la tâche précédente de la même personne (ordre du tableau)
-'    - Retard = jours ouvrés entre la fin calculée et aujourd'hui (si non terminée)
+'    - Fin calculée = projection tenant compte d'aujourd'hui et de
+'      l'avancement : tâche en cours = reste à faire (durée x (100 - av) %)
+'      depuis aujourd'hui ; non commencée dont le début est dépassé =
+'      durée complète depuis aujourd'hui ; autres cas = fin théorique
+'      (début + durée en jours disponibles)
+'    - Retard = écart en jours ouvrés entre la fin calculée et la fin théorique
+'    - Mise en évidence (Saisie) : lignes terminées grisées, tâches en
+'      cours en texte bleu, cellule État en orange si une tâche non
+'      commencée a dépassé sa date de début, cellules Avancement et État
+'      en rouge si l'état contredit l'avancement
 '    - Charge d'une semaine = jours de tâches réellement disponibles dans la semaine,
 '      ramenés à la capacité de la personne (colonne Capacité de la feuille Équipe)
 '
@@ -63,6 +72,14 @@ Private coulConge As Long
 Private coulFormation As Long
 Private coulIndispo As Long
 
+' Couleurs de mise en évidence des tâches (feuille Saisie) : InitCouleurs
+Private coulFondTerminee As Long      ' fond des lignes terminées (gris)
+Private coulTexteTerminee As Long     ' texte des lignes terminées
+Private coulTexteEnCours As Long      ' texte des lignes en cours (bleu)
+Private coulFondDebutDepasse As Long  ' état orange : non commencée alors que le début est dépassé
+Private coulFondIncoherent As Long    ' fond rouge : état / avancement contradictoires
+Private coulTexteIncoherent As Long   ' texte des cellules contradictoires
+
 Private Sub InitCouleurs()
     coulVertClair = RGB(221, 245, 221)   ' sous-charge
     coulVert = RGB(198, 239, 206)         ' charge correcte (jusqu'à 100%)
@@ -71,6 +88,13 @@ Private Sub InitCouleurs()
     coulConge = RGB(180, 210, 255)        ' congé
     coulFormation = RGB(215, 185, 240)    ' formation
     coulIndispo = RGB(217, 217, 217)     ' semaine sans aucun jour disponible
+    ' Mise en évidence des tâches (feuille Saisie)
+    coulFondTerminee = RGB(217, 217, 217)    ' lignes terminées : fond gris clair
+    coulTexteTerminee = RGB(128, 128, 128)   ' lignes terminées : texte gris
+    coulTexteEnCours = RGB(0, 112, 192)      ' lignes en cours : texte bleu
+    coulFondDebutDepasse = RGB(255, 192, 0)  ' état orange : démarrage en retard
+    coulFondIncoherent = RGB(255, 199, 206)  ' état / avancement incohérents : rouge clair
+    coulTexteIncoherent = RGB(156, 0, 6)     ' texte rouge foncé associé
 End Sub
 
 '--------------------------------------------------------------------------------
@@ -113,11 +137,65 @@ Private Function NumOr(c As Range, def As Double) As Double
     End If
 End Function
 
-Private Function MinD(a As Double, b As Double) As Double
+'--------------------------------------------------------------------------------
+' ASTUCE VBA : COMMENT VBA STOCKE LES DATES (bloc à lire une fois, utile
+' pour comprendre toutes les manipulations de dates du module)
+'
+' En VBA, une valeur de type Date est en réalité stockée comme un Double
+' (un nombre à virgule flottante) :
+'   - la partie ENTIÈRE représente le nombre de jours écoulés depuis le
+'     30/12/1899 (origine du calendrier VBA) : 45728 = 24/11/2025 ;
+'   - la partie DÉCIMALE représente l'heure du jour en fraction de 24 h :
+'     0,5 = 12h00, 0,25 = 06h00, 0,75 = 18h00.
+' Exemple : 45728,75 = le 24/11/2025 à 18h00.
+'
+' Trois conséquences utilisées partout dans ce module :
+'
+' 1) COMPARER DES DATES = COMPARER DES NOMBRES. Une Date passée à une
+'    fonction dont le paramètre est ByVal et attend un Double est
+'    convertie automatiquement, sans perte ni arrondi (l'affectation
+'    inverse Double vers Date est sans perte également). ATTENTION :
+'    en ByRef (mode par défaut en VBA), la conversion n'a PAS lieu :
+'    VBA exige que la variable passée soit exactement du type du
+'    paramètre, sinon la compilation échoue avec l'erreur
+'    "Incompatibilité de type ByRef" ("ByRef argument type mismatch").
+'    C'est pourquoi MinD et MaxD ci-dessous déclarent leurs paramètres
+'    ByVal As Double : elles servent aussi bien à resserrer des
+'    intervalles de dates (MaxD(deb, d1), MinD(fin, d2)) qu'à plafonner
+'    des nombres (MinD(joursDispo, capacite)), et ByVal accepte les
+'    deux grâce à la conversion implicite Date -> Double.
+'
+' 2) INT(DATE) SUPPRIME L'HEURE ET GARDE LE JOUR. Int(45728,75) = 45728,
+'    soit le 24/11/2025 à 00h00. Indispensable car une cellule saisie
+'    "24/11/2025 08:00" vaut en réalité 45728,333... : sans cette mise à
+'    minuit, un test "d <= fin" échouerait le jour de fin, et le premier
+'    jour d'une tâche commençant à 08h00 ne serait pas compté. C'est ce
+'    que font tous les Int(CDate(...)) du module. (Int arrondit vers le
+'    bas : valable pour les dates après 1900, ce qui est toujours le
+'    cas ici.)
+'
+' 3) ADDITIONS ET SOUSTRACTIONS DE DATES = OPÉRATIONS NUMÉRIQUES.
+'    d + 1 ajoute un jour entier, (d - lundi) renvoie l'écart en jours,
+'    et une boucle "For d = d1 To d2" parcourt les jours un par un (le
+'    compteur, un Double, est incrémenté de 1 à chaque tour, soit 1 jour).
+'--------------------------------------------------------------------------------
+Private Function MinD(ByVal a As Double, ByVal b As Double) As Double
+    ' Le minimum de deux valeurs. Les paramètres sont des Double et non
+    ' des Date car cette fonction sert aussi bien aux dates que aux
+    ' nombres (capacite), et ByVal car on ne peut passer une variable
+    ' Date à un paramètre Double qu'en ByVal : en ByRef (mode par
+    ' défaut), VBA refuserait à la compilation avec "Incompatibilité
+    ' de type ByRef". La conversion Date -> Double est sans perte
+    ' (voir le bloc "ASTUCE VBA" ci-dessus).
+    ' MinD(fin, d2) = la plus ancienne des deux bornes.
     If a < b Then MinD = a Else MinD = b
 End Function
 
-Private Function MaxD(a As Double, b As Double) As Double
+Private Function MaxD(ByVal a As Double, ByVal b As Double) As Double
+    ' Le maximum de deux valeurs. Même principe que MinD : ByVal As
+    ' Double pour accepter indifféremment des Dates (converties sans
+    ' perte) et des nombres, ce qui serait refusé en ByRef.
+    ' MaxD(deb, d1) = la plus récente des deux bornes.
     If a > b Then MaxD = a Else MaxD = b
 End Function
 
@@ -129,6 +207,10 @@ Public Function SemaineISO(d As Date) As Long
     If d < lundi1 Then
         SemaineISO = SemaineISO(DateSerial(Year(d) - 1, 12, 28))
     Else
+        ' (d - lundi1) : soustraire deux Dates renvoie l'écart en jours
+        ' (chaque Date est convertie en Double, voir "ASTUCE VBA").
+        ' \ 7 : division entière, donc le nombre de semaines complètes
+        ' écoulées depuis le lundi de la semaine 1.
         SemaineISO = (d - lundi1) \ 7 + 1
     End If
 End Function
@@ -143,6 +225,8 @@ Public Function EstFerie(d As Date) As Boolean
     last = s.Cells(s.Rows.Count, 1).End(xlUp).Row
     For i = 3 To last
         If IsDate(s.Cells(i, 1).Value) Then
+            ' Int(...) : l'heure éventuelle de la cellule est supprimée
+            ' pour comparer deux jours entiers entre eux (voir "ASTUCE VBA")
             If Int(CDate(s.Cells(i, 1).Value)) = d Then
                 EstFerie = True
                 Exit Function
@@ -160,6 +244,9 @@ Public Function EstAbsent(prenom As String, d As Date) As Boolean
         If Len(Trim$(CStr(s.Cells(i, 6).Value))) > 0 Then
             If StrComp(Trim$(CStr(s.Cells(i, 6).Value)), prenom, vbTextCompare) = 0 Then
                 If IsDate(s.Cells(i, 8).Value) And IsDate(s.Cells(i, 9).Value) Then
+                    ' Bornes d'absence mises à minuit (Int supprime
+                    ' l'heure) : le jour de début et le jour de fin
+                    ' comptent entièrement.
                     If d >= Int(CDate(s.Cells(i, 8).Value)) And d <= Int(CDate(s.Cells(i, 9).Value)) Then
                         EstAbsent = True
                         Exit Function
@@ -180,6 +267,9 @@ End Function
 Public Function JoursDispoEntre(prenom As String, d1 As Date, d2 As Date) As Double
     Dim d As Date, n As Double
     If d2 < d1 Then Exit Function
+    ' Boucle For sur une Date : le compteur est incrémenté de 1 à chaque
+    ' tour, c'est-à-dire d'un jour entier (une Date est un Double, voir
+    ' le bloc "ASTUCE VBA").
     For d = d1 To d2
         If JourDispo(prenom, d) Then n = n + 1
     Next d
@@ -202,6 +292,7 @@ Public Function ProchainJourDispo(prenom As String, d As Date) As Date
     Dim x As Date, garde As Long
     x = d
     Do While Not JourDispo(prenom, x)
+        ' + 1 sur une Date = + 1 jour entier (le Double est incrémenté de 1)
         x = x + 1
         garde = garde + 1
         If garde > 365 Then Exit Do
@@ -219,7 +310,7 @@ Public Function FinTache(prenom As String, debut As Date, duree As Long) As Date
     End If
     Do While n < duree
         If JourDispo(prenom, d) Then n = n + 1
-        If n < duree Then d = d + 1
+        If n < duree Then d = d + 1   ' + 1 = un jour entier (voir "ASTUCE VBA")
     Loop
     FinTache = d
 End Function
@@ -277,9 +368,16 @@ Private Function JoursAbsence(prenom As String, d1 As Date, d2 As Date, typ As S
         If StrComp(Trim$(CStr(s.Cells(i, 6).Value)), prenom, vbTextCompare) = 0 Then
             If StrComp(Trim$(CStr(s.Cells(i, 7).Value)), typ, vbTextCompare) = 0 Then
                 If IsDate(s.Cells(i, 8).Value) And IsDate(s.Cells(i, 9).Value) Then
+                    ' Bornes d'absence ramenées à minuit (Int supprime l'heure)
                     a = Int(CDate(s.Cells(i, 8).Value))
                     b = Int(CDate(s.Cells(i, 9).Value))
                     If a <= d2 And b >= d1 Then
+                        ' Intersection des intervalles [a;b] et [d1;d2] :
+                        ' MaxD retient la borne la plus tardive, MinD la plus
+                        ' ancienne. Les Dates sont converties en Double pour
+                        ' l'appel : la comparaison est identique (voir
+                        ' "ASTUCE VBA"), et la boucle For avance ensuite
+                        ' jour par jour.
                         For d = MaxD(a, d1) To MinD(b, d2)
                             If Weekday(d, vbMonday) <= 5 Then
                                 If Not EstFerie(d) Then n = n + 1
@@ -304,6 +402,8 @@ Private Function AutoDebutGrille() As Date
             For r = 1 To lo.DataBodyRange.Rows.Count
                 v = lo.DataBodyRange.Cells(r, 7).Value
                 If IsDate(v) Then
+                    ' Int(CDate(v)) : le jour sans heure ; on retient le
+                    ' début effectif le plus ancien trouvé.
                     If Int(CDate(v)) < d Then d = Int(CDate(v))
                 End If
             Next r
@@ -326,10 +426,14 @@ Private Sub Horizon(ByRef debLundi As Date, ByRef nbSem As Long, _
     If nbSem > 104 Then nbSem = 104
     v = sEq.Range("M2").Value
     If Not IsEmpty(v) And IsDate(v) Then
+        ' M2 peut contenir une date accompagnée d'une heure : on ne garde
+        ' que le jour (Int supprime la partie décimale = l'heure).
         dt = Int(CDate(v))
     Else
         dt = AutoDebutGrille()
     End If
+    ' Retour au lundi : on recule du nombre de jours écoulés depuis lundi
+    ' (soustraction de Dates = écart en jours, voir "ASTUCE VBA")
     debLundi = dt - (Weekday(dt, vbMonday) - 1)
 End Sub
 
@@ -343,9 +447,14 @@ Private Function ChargeSemaine(prenom As String, d1 As Date, d2 As Date) As Doub
     For r = 1 To lo.DataBodyRange.Rows.Count
         If StrComp(Trim$(CStr(lo.DataBodyRange.Cells(r, 2).Value)), prenom, vbTextCompare) = 0 Then
             If IsDate(lo.DataBodyRange.Cells(r, 7).Value) And IsDate(lo.DataBodyRange.Cells(r, 8).Value) Then
+                ' Début et fin de tâche ramenés au jour entier
+                ' (Int supprime l'heure éventuelle de la saisie)
                 deb = Int(CDate(lo.DataBodyRange.Cells(r, 7).Value))
                 fin = Int(CDate(lo.DataBodyRange.Cells(r, 8).Value))
                 If deb <= d2 And fin >= d1 Then
+                    ' Intersection [deb;fin] avec [d1;d2] : MaxD/MinD
+                    ' travaillent ici sur des Dates grâce à leur type
+                    ' Double (conversion sans perte, voir "ASTUCE VBA").
                     a = MaxD(deb, d1)
                     b = MinD(fin, d2)
                     ChargeSemaine = ChargeSemaine + JoursDispoEntre(prenom, a, b)
@@ -420,20 +529,80 @@ End Function
 '--------------------------------------------------------------------------------
 ' MISE À JOUR : recalcul des tâches (feuille Saisie)
 '--------------------------------------------------------------------------------
+Private Sub IntegrerLignesSousTableau()
+    ' Intègre au tableau de saisie les lignes tapées juste en dessous.
+    ' Excel étend normalement un tableau tout seul quand on saisit dans la
+    ' ligne immédiatement inférieure, mais cela peut ne pas se produire
+    ' (collage, saisie après un tri, etc.) : on agrandit alors le tableau
+    ' pour couvrir ces lignes afin qu'elles soient traitées par le recalcul.
+    Dim lo As ListObject, s As Worksheet
+    Dim r As Long, nb As Long, vides As Long, derniere As Long
+    Set lo = TableSaisie()
+    If lo Is Nothing Then Exit Sub
+    Set s = lo.Parent
+    nb = lo.ListColumns.Count
+    vides = 0
+    derniere = 0
+    ' Balayage d'au plus 200 lignes sous le tableau, en s'arrêtant après
+    ' 10 lignes entièrement vides consécutives (pour ne pas absorber des
+    ' données sans rapport saisies plus bas dans la feuille)
+    For r = lo.Range.Row + lo.Range.Rows.Count _
+            To lo.Range.Row + lo.Range.Rows.Count + 200
+        If EstLigneVide(s, r, lo.Range.Column, nb) Then
+            vides = vides + 1
+            If vides >= 10 Then Exit For
+        Else
+            vides = 0
+            derniere = r
+        End If
+    Next r
+    If derniere > 0 Then
+        ' Agrandissement du tableau jusqu'à la dernière ligne saisie
+        lo.Resize s.Range(lo.Range.Cells(1, 1), _
+                          s.Cells(derniere, lo.Range.Column + nb - 1))
+    End If
+End Sub
+
+Private Function EstLigneVide(s As Worksheet, r As Long, col1 As Long, nb As Long) As Boolean
+    ' Vrai si les nb colonnes du tableau, à partir de col1, sont vides sur la ligne r
+    Dim c As Long, v As Variant
+    For c = col1 To col1 + nb - 1
+        v = s.Cells(r, c).Value
+        If IsError(v) Then Exit Function           ' cellule en erreur = considérée remplie
+        If Not IsEmpty(v) Then
+            If Len(Trim$(CStr(v))) > 0 Then Exit Function
+        End If
+    Next c
+    EstLigneVide = True
+End Function
+
 Public Sub RecalculerSaisie()
     Dim lo As ListObject, r As Long, num As Long
     Dim prenom As String, etat As String
     Dim duree As Long, retard As Long
-    Dim deb As Date, fin As Date, av As Double
+    Dim deb As Date, finTh As Date, finCalc As Date, av As Double
+    Dim reste As Double, incoherent As Boolean
     Dim v As Variant, finPrec As Variant
     Dim chaines As New Collection
+    Dim ligne As Range
+
+    ' Lignes saisies juste sous le tableau : intégrées d'abord au tableau
+    ' pour être prises en compte par le recalcul
+    Call IntegrerLignesSousTableau
 
     Set lo = TableSaisie()
     If lo Is Nothing Then Exit Sub
     If lo.DataBodyRange Is Nothing Then Exit Sub
 
+    InitCouleurs
     Application.ScreenUpdating = False
     For r = 1 To lo.DataBodyRange.Rows.Count
+        ' Remise à zéro du style de la ligne avant recolorage : un état
+        ' peut avoir changé depuis le dernier passage
+        Set ligne = lo.DataBodyRange.Rows(r)
+        ligne.Interior.ColorIndex = xlNone
+        ligne.Font.ColorIndex = xlColorIndexAutomatic
+
         prenom = Trim$(CStr(lo.DataBodyRange.Cells(r, 2).Value))
         If Len(prenom) > 0 Then
 
@@ -458,6 +627,7 @@ Public Sub RecalculerSaisie()
             ' Date de début : saisie, ou enchaînement automatique
             v = lo.DataBodyRange.Cells(r, 6).Value
             If Not IsEmpty(v) And IsDate(v) Then
+                ' Heure éventuelle ignorée : la tâche démarre au jour entier
                 deb = Int(CDate(v))
             Else
                 finPrec = Empty
@@ -465,20 +635,13 @@ Public Sub RecalculerSaisie()
                 finPrec = chaines(prenom)
                 On Error GoTo 0
                 If IsDate(finPrec) And Not IsEmpty(finPrec) Then
+                    ' CDate(finPrec) + 1 : le jour suivant la fin de la
+                    ' tâche précédente (+ 1 = + 1 jour entier)
                     deb = ProchainJourDispo(prenom, CDate(finPrec) + 1)
                 Else
                     deb = ProchainJourDispo(prenom, Date)
                 End If
             End If
-
-            fin = FinTache(prenom, deb, duree)
-            lo.DataBodyRange.Cells(r, 7).Value = deb
-            lo.DataBodyRange.Cells(r, 8).Value = fin
-
-            On Error Resume Next
-            chaines.Remove prenom
-            On Error GoTo 0
-            chaines.Add fin, prenom
 
             ' État automatique si la cellule est vide
             etat = Trim$(CStr(lo.DataBodyRange.Cells(r, 10).Value))
@@ -493,13 +656,86 @@ Public Sub RecalculerSaisie()
                 lo.DataBodyRange.Cells(r, 10).Value = etat
             End If
 
-            ' Retard : jours ouvrés entre la fin calculée et aujourd'hui
-            If StrComp(etat, ETAT_T, vbTextCompare) <> 0 And fin < Date Then
-                retard = JoursOuvresEntre(fin + 1, Date)
+            ' Fin théorique = le planning d'origine : début + durée
+            ' en jours disponibles (voir FinTache)
+            finTh = FinTache(prenom, deb, duree)
+
+            ' Fin calculée = la projection tenant compte d'aujourd'hui et
+            ' de l'avancement :
+            '   - tâche terminée, ou pas commencée et pas encore due :
+            '     la fin théorique reste la référence ;
+            '   - tâche en cours : reste à faire = durée x (100 - av) %,
+            '     arrondi au jour entier supérieur (une journée entamée
+            '     compte pour un jour de travail) ;
+            '   - tâche non commencée dont le début est dépassé : on
+            '     projette comme si elle démarrait aujourd'hui.
+            If StrComp(etat, ETAT_T, vbTextCompare) = 0 Or (av <= 0 And deb >= Date) Then
+                finCalc = finTh
+            Else
+                If av <= 0 Then
+                    reste = duree
+                Else
+                    reste = Application.WorksheetFunction.RoundUp(duree * (100# - av) / 100#, 0)
+                    If reste < 1 Then reste = 1
+                End If
+                ' Le reste à faire démarre au plus tôt aujourd'hui
+                ' (IIf garde le début prévu s'il est encore dans le futur)
+                finCalc = FinTache(prenom, IIf(deb > Date, deb, Date), CLng(reste))
+            End If
+            lo.DataBodyRange.Cells(r, 7).Value = deb
+            lo.DataBodyRange.Cells(r, 8).Value = finCalc
+
+            On Error Resume Next
+            chaines.Remove prenom
+            On Error GoTo 0
+            chaines.Add finCalc, prenom
+
+            ' Retard = écart en jours ouvrés (hors week-ends et fériés)
+            ' entre la fin calculée et la fin théorique, sans tenir compte
+            ' de l'avancement. Nul si la projection est en avance sur le
+            ' planning d'origine.
+            If finCalc > finTh Then
+                retard = JoursOuvresEntre(finTh + 1, finCalc)
             Else
                 retard = 0
             End If
             lo.DataBodyRange.Cells(r, 11).Value = retard
+
+            ' --- Mise en évidence de la ligne ---
+            If StrComp(etat, ETAT_T, vbTextCompare) = 0 Then
+                ' Tâche terminée : ligne entière grisée
+                ligne.Interior.Color = coulFondTerminee
+                ligne.Font.Color = coulTexteTerminee
+            ElseIf StrComp(etat, ETAT_EC, vbTextCompare) = 0 Then
+                ' Tâche en cours : texte bleu pour la faire ressortir
+                ligne.Font.Color = coulTexteEnCours
+            End If
+
+            ' Non commencée alors que la date de début est dépassée :
+            ' la cellule État passe en orange
+            If StrComp(etat, ETAT_NC, vbTextCompare) = 0 And deb < Date Then
+                lo.DataBodyRange.Cells(r, 10).Interior.Color = coulFondDebutDepasse
+            End If
+
+            ' Contrôle de cohérence état / avancement : rouge sur les
+            ' cellules Avancement et État en cas de contradiction
+            If StrComp(etat, ETAT_T, vbTextCompare) = 0 Then
+                incoherent = (av < 100)              ' terminée mais pas à 100 %
+            ElseIf StrComp(etat, ETAT_EC, vbTextCompare) = 0 Then
+                incoherent = (av <= 0 Or av >= 100)   ' en cours à 0 % ou 100 %
+            Else
+                incoherent = (av > 0)                ' non commencée mais avancée
+            End If
+            If incoherent Then
+                With lo.DataBodyRange.Cells(r, 9)
+                    .Interior.Color = coulFondIncoherent
+                    .Font.Color = coulTexteIncoherent
+                End With
+                With lo.DataBodyRange.Cells(r, 10)
+                    .Interior.Color = coulFondIncoherent
+                    .Font.Color = coulTexteIncoherent
+                End With
+            End If
         End If
     Next r
     Application.ScreenUpdating = True
@@ -543,6 +779,8 @@ Public Sub MajCharge()
     s.Range("A3").Value = "Lundi"
     For w = 0 To nbSem - 1
         col = 2 + w
+        ' + 7 * w : avance de semaines entières (une Date est un Double,
+        ' ajouter 7 revient à ajouter 7 jours, voir "ASTUCE VBA")
         lundi = debLundi + 7 * w
         s.Cells(2, col).Value = "S" & SemaineISO(lundi)
         s.Cells(3, col).Value = lundi
@@ -560,6 +798,8 @@ Public Sub MajCharge()
         s.Cells(r, 1).Font.Bold = True
         cap = Capacite(p)
         For w = 0 To nbSem - 1
+            ' + 7 * w : avance de semaines entières (+ 7 sur une Date
+            ' = + 7 jours, la Date étant un Double, voir "ASTUCE VBA")
             lundi = debLundi + 7 * w
             vendredi = lundi + 4
             dispo = JoursDispoEntre(p, lundi, vendredi)
@@ -609,6 +849,8 @@ Public Sub MajCharge()
     s.Cells(rAbs + 2, 1).Value = "Lundi"
     For w = 0 To nbSem - 1
         col = 2 + w
+        ' + 7 * w : avance de semaines entières (une Date est un Double,
+        ' ajouter 7 revient à ajouter 7 jours, voir "ASTUCE VBA")
         lundi = debLundi + 7 * w
         s.Cells(rAbs + 1, col).Value = "S" & SemaineISO(lundi)
         s.Cells(rAbs + 2, col).Value = lundi
@@ -624,6 +866,8 @@ Public Sub MajCharge()
         s.Cells(rr, 1).Value = p
         s.Cells(rr, 1).Font.Bold = True
         For w = 0 To nbSem - 1
+            ' + 7 * w : avance de semaines entières (+ 7 sur une Date
+            ' = + 7 jours, la Date étant un Double, voir "ASTUCE VBA")
             lundi = debLundi + 7 * w
             vendredi = lundi + 4
             nc = JoursAbsence(p, lundi, vendredi, "Congé")
@@ -726,8 +970,13 @@ Public Sub MajResume()
         ch = 0
         dp = 0
         For w = 0 To nbSem - 1
+            ' + 7 * w : avance de semaines entières (+ 7 sur une Date
+            ' = + 7 jours, la Date étant un Double, voir "ASTUCE VBA")
             lundi = debLundi + 7 * w
             ch = ch + ChargeSemaine(p, lundi, lundi + 4)
+            ' MinD sur des nombres cette fois (et non des dates) : la
+            ' disponibilité de la semaine est plafonnée à la capacité,
+            ' d'où le type Double des paramètres de MinD/MaxD.
             dp = dp + MinD(JoursDispoEntre(p, lundi, lundi + 4), Capacite(p))
         Next w
         Call CompterTaches(p, nNC, nEC, nT, ret)
@@ -778,6 +1027,9 @@ Public Sub MajResume()
                         nP = nP + 1
                         p = Trim$(CStr(lo.DataBodyRange.Cells(i, 2).Value))
                         If IsDate(lo.DataBodyRange.Cells(i, 7).Value) And IsDate(lo.DataBodyRange.Cells(i, 8).Value) Then
+                            ' Bornes de tâche ramenées au jour entier (Int
+                            ' supprime l'heure), puis intersection avec la
+                            ' période affichée [debLundi;finGrille]
                             deb = Int(CDate(lo.DataBodyRange.Cells(i, 7).Value))
                             fin = Int(CDate(lo.DataBodyRange.Cells(i, 8).Value))
                             a = MaxD(deb, debLundi)
@@ -833,12 +1085,16 @@ Public Sub MajResume()
     r = r + 1
     rD = r
     For w = 0 To nbSem - 1
+        ' + 7 * w : avance de semaines entières (une Date est un Double,
+        ' ajouter 7 revient à ajouter 7 jours, voir "ASTUCE VBA")
         lundi = debLundi + 7 * w
         tch = 0
         tdp = 0
         For i = 1 To nM
             p = CStr(membres(i))
             tch = tch + ChargeSemaine(p, lundi, lundi + 4)
+            ' MinD sur des nombres (plafonnement à la capacité), même
+            ' astuce que dans la feuille Charge.
             tdp = tdp + MinD(JoursDispoEntre(p, lundi, lundi + 4), Capacite(p))
         Next i
         s.Cells(r, 1).Value = "S" & SemaineISO(lundi)
