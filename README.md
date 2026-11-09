@@ -7,7 +7,7 @@ Outil Excel avec macros (VBA) pour gérer le planning d'une équipe : saisie des
 | Chemin | Description |
 |---|---|
 | `Sources/PlanningEquipe.bas` | Module VBA, **encodage ANSI (Windows-1252), fins de ligne CRLF** : à télécharger puis importer directement dans l'éditeur VBE (accents préservés) |
-| `Sources/PlanningEquie_UTF8.bas` | Même module en UTF-8 : pour lecture et copier-coller depuis github.com |
+| `Sources/PlanningEquipe_UTF8.bas` | Même module en UTF-8 : pour lecture et copier-coller depuis github.com |
 | `Documents/Guide_installation_et_utilisation.odt` | Guide complet : installation, utilisation, règles de calcul, personnalisation |
 | `Documents/odt-src/` | Sources XML du guide ODT |
 | `.github/workflows/build-assets.yml` | Action GitHub : régénère le `.bas` ANSI et l'ODT à partir des sources |
@@ -16,7 +16,7 @@ Outil Excel avec macros (VBA) pour gérer le planning d'une équipe : saisie des
 
 1. Créer un nouveau classeur Excel et l'enregistrer au format `.xlsm` (prenant en charge les macros).
 2. Ouvrir l'éditeur VBA (`Alt + F11`), puis **Fichier > Importer un fichier** et sélectionner `Sources/PlanningEquipe.bas` (encodage ANSI : les accents sont préservés à l'import).
-   - Alternative par copier-coller : ouvrir `Sources/PlanningEquie_UTF8.bas`, copier le code **sans la première ligne `Attribute VB_Name`** et le coller dans un nouveau module (**Insertion > Module**).
+   - Alternative par copier-coller : ouvrir `Sources/PlanningEquipe_UTF8.bas`, copier le code **sans la première ligne `Attribute VB_Name`** et le coller dans un nouveau module (**Insertion > Module**).
 3. De retour dans Excel, `Alt + F8` > exécuter `ConstruireClasseur` : les 5 feuilles sont créées, mises en forme et préremplies d'exemples.
 4. Enregistrer, puis activer les macros à l'ouverture du fichier.
 
@@ -50,4 +50,4 @@ Syntaxe vérifiée pour **Office 2024** et **Microsoft 365**, compatible Excel 2
 
 ## Regénérer les fichiers générés
 
-Toute modification de `Sources/PlanningEquie_UTF8.bas` ou de `Documents/odt-src/` déclenche l'action GitHub `build-assets`, qui régénère le module ANSI (`Sources/PlanningEquipe.bas`) et l'ODT, puis les commit automatiquement dans le dépôt.
+Toute modification de `Sources/PlanningEquipe_UTF8.bas` ou de `Documents/odt-src/` déclenche l'action GitHub `build-assets`, qui régénère le module ANSI (`Sources/PlanningEquie.bas`) et l'ODT, puis les commit automatiquement dans le dépôt.

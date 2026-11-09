@@ -4,7 +4,7 @@ name: build-assets
 on:
   push:
     paths:
-      - "Sources/PlanningEquie_UTF8.bas"
+      - "Sources/PlanningEquipe_UTF8.bas"
       - "Documents/odt-src/**"
       - ".github/workflows/build-assets.yml"
   workflow_dispatch:
@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Module VBA en ANSI (Windows-1252) et fins de ligne CRLF
         run: |
-          iconv -f UTF-8 -t WINDOWS-1252 "Sources/PlanningEquie_UTF8.bas" | awk '{ sub(/$/, "\r"); print }' > "Sources/PlanningEquie.bas"
+          iconv -f UTF-8 -t WINDOWS-1252 "Sources/PlanningEquipe_UTF8.bas" | awk '{ sub(/$/, "\r"); print }' > "Sources/PlanningEquipe.bas"
       - name: Assemblage du fichier ODT
         run: |
           cd Documents/odt-src
