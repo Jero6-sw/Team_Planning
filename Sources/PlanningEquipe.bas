@@ -3,28 +3,42 @@ Attribute VB_Name = "M_PlanningEquipe"
 Option Explicit
 
 '====================================================================================
-'  PLANNING D'Ã‰QUIPE - Module VBA unique
+'  PLANNING D'ÉQUIPE - Module VBA unique
 '------------------------------------------------------------------------------------
 '  MACROS A UTILISER (Alt+F8) :
-'    - ConstruireClasseur : construit les 5 feuilles du classeur (Ã  exÃ©cuter 1 fois)
-'    - MajTout            : recalcule les tÃ¢ches et met Ã  jour Charge et RÃ©sumÃ©
-'    - AjouterFeriesAnnee : ajoute les jours fÃ©riÃ©s franÃ§ais d'une annÃ©e donnÃ©e
+'    - ConstruireClasseur : construit les 5 feuilles du classeur (à exécuter 1 fois)
+'    - MajTout            : recalcule les tâches et met à jour Charge et Résumé
+'    - AjouterFeriesAnnee : ajoute les jours fériés français d'une année donnée
 '
-'  FEUILLES GÃ‰RÃ‰ES :
-'    Saisie       : 1 ligne = 1 tÃ¢che (prÃ©nom, projet, description, durÃ©e...)
+'  FEUILLES GÉRÉES :
+'    Saisie       : 1 ligne = 1 tâche (prénom, projet, description, durée...)
 '    Charge       : grille de charge par personne et par semaine (vision couleur)
-'    RÃ©sumÃ©       : rÃ©sumÃ© numÃ©rique (personnes, projets, semaines, tÃ¢ches)
-'    Ã‰quipe       : membres, absences (congÃ©s / formations), paramÃ¨tres
-'    Jours FÃ©riÃ©s : jours fÃ©riÃ©s France + jours exceptionnels (ponts...)
+'    Résumé       : résumé numérique (personnes, projets, semaines, tâches)
+'    Équipe       : membres, absences (congés / formations), paramètres
+'    Jours Fériés : jours fériés France + jours exceptionnels (ponts...)
 '
-'  RÃˆGLES DE CALCUL :
-'    - Jour disponible = lundi Ã  vendredi, hors jours fÃ©riÃ©s, hors absences
-'      de la personne (congÃ©s, formations, autre)
-'    - Dans Saisie, un DÃ©but laissÃ© vide = la tÃ¢che s'enchaÃ®ne aprÃ¨s la fin
-'      de la tÃ¢che prÃ©cÃ©dente de la mÃªme personne (ordre du tableau)
-'    - Retard = jours ouvrÃ©s entre la fin calculÃ©e et aujourd'hui (si non terminÃ©e)
-'    - Charge d'une semaine = jours de tÃ¢ches rÃ©ellement disponibles dans la semaine,
-'      ramenÃ©s Ã  la capacitÃ© de la personne (colonne CapacitÃ© de la feuille Ã‰quipe)
+'  RÈGLES DE CALCUL :
+'    - Jour disponible = lundi à vendredi, hors jours fériés, hors absences
+'      de la personne (congés, formations, autre)
+'    - Dans Saisie, un Début laissé vide = la tâche s'enchaîne après la fin
+'      de la tâche précédente de la même personne (ordre du tableau)
+'    - Retard = jours ouvrés entre la fin calculée et aujourd'hui (si non terminée)
+'    - Charge d'une semaine = jours de tâches réellement disponibles dans la semaine,
+'      ramenés à la capacité de la personne (colonne Capacité de la feuille Équipe)
+'
+'  COMPATIBILITÉ (syntaxe vérifiée) :
+'    - Vérifié : Microsoft 365, Office 2024, Excel 2016 / 2019 / 2021
+'      (Excel desktop Windows, 32 et 64 bits)
+'    - Le module n'utilise que des instructions VBA et des constantes Excel
+'      standard (xlValidateList, xlCellValue, xlGreater, xlBetween, etc.)
+'    - Non concerné : Excel Online et Excel mobile (les macros n'y tournent pas)
+'
+'  ENCODAGE DU FICHIER :
+'    - PlanningEquipe.bas : encodage ANSI (Windows-1252), fins de ligne CRLF,
+'      à importer directement dans VBE (Fichier > Importer un fichier) ;
+'      les accents sont préservés à l'import
+'    - PlanningEquipe_UTF8.bas : même code en UTF-8 pour lecture et copier-coller
+'      depuis github.com (ne pas copier la ligne "Attribute VB_Name" dans ce cas)
 '====================================================================================
 
 '--------------------------------------------------------------------------------
@@ -32,13 +46,13 @@ Option Explicit
 '--------------------------------------------------------------------------------
 Private Const SH_SAI As String = "Saisie"
 Private Const SH_CHA As String = "Charge"
-Private Const SH_RES As String = "RÃ©sumÃ©"
-Private Const SH_EQ As String = "Ã‰quipe"
-Private Const SH_FER As String = "Jours FÃ©riÃ©s"
+Private Const SH_RES As String = "Résumé"
+Private Const SH_EQ As String = "Équipe"
+Private Const SH_FER As String = "Jours Fériés"
 
-Private Const ETAT_NC As String = "Non commencÃ©e"
+Private Const ETAT_NC As String = "Non commencée"
 Private Const ETAT_EC As String = "En cours"
-Private Const ETAT_T As String = "TerminÃ©e"
+Private Const ETAT_T As String = "Terminée"
 
 ' Couleurs de la grille de charge : modifiez les valeurs dans InitCouleurs
 Private coulVertClair As Long
@@ -51,16 +65,16 @@ Private coulIndispo As Long
 
 Private Sub InitCouleurs()
     coulVertClair = RGB(221, 245, 221)   ' sous-charge
-    coulVert = RGB(198, 239, 206)         ' charge correcte (jusqu'Ã  100%)
-    coulOrange = RGB(255, 217, 150)       ' surcharge modÃ©rÃ©e
-    coulRouge = RGB(255, 160, 160)       ' surcharge Ã©levÃ©e
-    coulConge = RGB(180, 210, 255)        ' congÃ©
+    coulVert = RGB(198, 239, 206)         ' charge correcte (jusqu'à 100%)
+    coulOrange = RGB(255, 217, 150)       ' surcharge modérée
+    coulRouge = RGB(255, 160, 160)       ' surcharge élevée
+    coulConge = RGB(180, 210, 255)        ' congé
     coulFormation = RGB(215, 185, 240)    ' formation
     coulIndispo = RGB(217, 217, 217)     ' semaine sans aucun jour disponible
 End Sub
 
 '--------------------------------------------------------------------------------
-' AccÃ¨s aux feuilles et au tableau de saisie
+' Accès aux feuilles et au tableau de saisie
 '--------------------------------------------------------------------------------
 Private Function Feuille(nom As String) As Worksheet
     On Error Resume Next
@@ -72,7 +86,7 @@ Private Function FeuilleReq(nom As String) As Worksheet
     Set FeuilleReq = Feuille(nom)
     If FeuilleReq Is Nothing Then
         Err.Raise vbObjectError + 513, , _
-            "La feuille '" & nom & "' est introuvable. ExÃ©cutez d'abord la macro ConstruireClasseur."
+            "La feuille '" & nom & "' est introuvable. Exécutez d'abord la macro ConstruireClasseur."
     End If
 End Function
 
@@ -108,7 +122,7 @@ Private Function MaxD(a As Double, b As Double) As Double
 End Function
 
 Public Function SemaineISO(d As Date) As Long
-    ' NumÃ©ro de semaine ISO (semaines du lundi au dimanche)
+    ' Numéro de semaine ISO (semaines du lundi au dimanche)
     Dim jan4 As Date, lundi1 As Date
     jan4 = DateSerial(Year(d), 1, 4)
     lundi1 = jan4 - (Weekday(jan4, vbMonday) - 1)
@@ -120,7 +134,7 @@ Public Function SemaineISO(d As Date) As Long
 End Function
 
 '--------------------------------------------------------------------------------
-' Calculs de jours : fÃ©riÃ©s, absences, jours disponibles
+' Calculs de jours : fériés, absences, jours disponibles
 '--------------------------------------------------------------------------------
 Public Function EstFerie(d As Date) As Boolean
     Dim s As Worksheet, i As Long, last As Long
@@ -158,8 +172,8 @@ End Function
 
 Public Function JourDispo(prenom As String, d As Date) As Boolean
     If Weekday(d, vbMonday) > 5 Then Exit Function          ' samedi / dimanche
-    If EstFerie(d) Then Exit Function                        ' jour fÃ©riÃ©
-    If EstAbsent(prenom, d) Then Exit Function               ' congÃ© / formation
+    If EstFerie(d) Then Exit Function                        ' jour férié
+    If EstAbsent(prenom, d) Then Exit Function               ' congé / formation
     JourDispo = True
 End Function
 
@@ -173,7 +187,7 @@ Public Function JoursDispoEntre(prenom As String, d1 As Date, d2 As Date) As Dou
 End Function
 
 Public Function JoursOuvresEntre(d1 As Date, d2 As Date) As Long
-    ' Jours ouvrÃ©s hors week-ends et jours fÃ©riÃ©s (sans tenir compte des absences)
+    ' Jours ouvrés hors week-ends et jours fériés (sans tenir compte des absences)
     Dim d As Date, n As Long
     If d2 < d1 Then Exit Function
     For d = d1 To d2
@@ -196,7 +210,7 @@ Public Function ProchainJourDispo(prenom As String, d As Date) As Date
 End Function
 
 Public Function FinTache(prenom As String, debut As Date, duree As Long) As Date
-    ' Renvoie la date de fin : duree jours disponibles en comptant le jour de dÃ©but
+    ' Renvoie la date de fin : duree jours disponibles en comptant le jour de début
     Dim d As Date, n As Long
     d = ProchainJourDispo(prenom, debut)
     If duree <= 0 Then
@@ -211,7 +225,7 @@ Public Function FinTache(prenom As String, debut As Date, duree As Long) As Date
 End Function
 
 '--------------------------------------------------------------------------------
-' Lecture de la configuration (feuille Ã‰quipe)
+' Lecture de la configuration (feuille Équipe)
 '--------------------------------------------------------------------------------
 Private Function ListeMembres() As Variant
     Dim s As Worksheet, last As Long, i As Long, n As Long
@@ -233,7 +247,7 @@ Private Function ListeMembres() As Variant
 End Function
 
 Private Function Capacite(prenom As String) As Double
-    ' CapacitÃ© hebdomadaire de la personne (colonne B de la feuille Ã‰quipe)
+    ' Capacité hebdomadaire de la personne (colonne B de la feuille Équipe)
     Dim s As Worksheet, last As Long, i As Long
     Dim cap As Double
     Set s = Feuille(SH_EQ)
@@ -253,7 +267,7 @@ Private Function Capacite(prenom As String) As Double
 End Function
 
 Private Function JoursAbsence(prenom As String, d1 As Date, d2 As Date, typ As String) As Double
-    ' Nombre de jours d'absence du type demandÃ© entre d1 et d2 (hors week-ends et fÃ©riÃ©s)
+    ' Nombre de jours d'absence du type demandé entre d1 et d2 (hors week-ends et fériés)
     Dim s As Worksheet, i As Long, last As Long
     Dim a As Date, b As Date, d As Date, n As Double
     Set s = Feuille(SH_EQ)
@@ -280,8 +294,8 @@ Private Function JoursAbsence(prenom As String, d1 As Date, d2 As Date, typ As S
 End Function
 
 Private Function AutoDebutGrille() As Date
-    ' DÃ©but automatique de la grille : le plus ancien entre aujourd'hui
-    ' et les dÃ©buts effectifs des tÃ¢ches
+    ' Début automatique de la grille : le plus ancien entre aujourd'hui
+    ' et les débuts effectifs des tâches
     Dim d As Date, lo As ListObject, r As Long, v As Variant
     d = Date
     Set lo = TableSaisie()
@@ -300,7 +314,7 @@ End Function
 
 Private Sub Horizon(ByRef debLundi As Date, ByRef nbSem As Long, _
                     ByRef seuilBas As Double, ByRef seuilHaut As Double)
-    ' Lit les paramÃ¨tres de la feuille Ã‰quipe (cellules M2 Ã  M6)
+    ' Lit les paramètres de la feuille Équipe (cellules M2 à M6)
     Dim sEq As Worksheet, v As Variant, dt As Date
     Set sEq = FeuilleReq(SH_EQ)
     seuilBas = NumOr(sEq.Range("M4"), 80) / 100
@@ -320,7 +334,7 @@ Private Sub Horizon(ByRef debLundi As Date, ByRef nbSem As Long, _
 End Sub
 
 Private Function ChargeSemaine(prenom As String, d1 As Date, d2 As Date) As Double
-    ' Charge planifiÃ©e de la personne entre d1 et d2 (jours couverts par des tÃ¢ches)
+    ' Charge planifiée de la personne entre d1 et d2 (jours couverts par des tâches)
     Dim lo As ListObject, r As Long
     Dim deb As Date, fin As Date, a As Date, b As Date
     Set lo = TableSaisie()
@@ -404,7 +418,7 @@ Private Function ListeProjets() As Collection
 End Function
 
 '--------------------------------------------------------------------------------
-' MISE Ã€ JOUR : recalcul des tÃ¢ches (feuille Saisie)
+' MISE À JOUR : recalcul des tâches (feuille Saisie)
 '--------------------------------------------------------------------------------
 Public Sub RecalculerSaisie()
     Dim lo As ListObject, r As Long, num As Long
@@ -423,25 +437,25 @@ Public Sub RecalculerSaisie()
         prenom = Trim$(CStr(lo.DataBodyRange.Cells(r, 2).Value))
         If Len(prenom) > 0 Then
 
-            ' NumÃ©ro automatique si la cellule est vide
+            ' Numéro automatique si la cellule est vide
             v = lo.DataBodyRange.Cells(r, 1).Value
             If IsEmpty(v) Or Not IsNumeric(v) Then
                 num = num + 1
                 lo.DataBodyRange.Cells(r, 1).Value = num
             End If
 
-            ' DurÃ©e en jours ouvrÃ©s
+            ' Durée en jours ouvrés
             v = lo.DataBodyRange.Cells(r, 5).Value
             If Not IsEmpty(v) And IsNumeric(v) Then duree = CLng(v) Else duree = 0
             If duree < 0 Then duree = 0
 
-            ' Avancement de 0 Ã  100
+            ' Avancement de 0 à 100
             v = lo.DataBodyRange.Cells(r, 9).Value
             If Not IsEmpty(v) And IsNumeric(v) Then av = CDbl(v) Else av = 0
             If av < 0 Then av = 0
             If av > 100 Then av = 100
 
-            ' Date de dÃ©but : saisie, ou enchaÃ®nement automatique
+            ' Date de début : saisie, ou enchaînement automatique
             v = lo.DataBodyRange.Cells(r, 6).Value
             If Not IsEmpty(v) And IsDate(v) Then
                 deb = Int(CDate(v))
@@ -466,7 +480,7 @@ Public Sub RecalculerSaisie()
             On Error GoTo 0
             chaines.Add fin, prenom
 
-            ' Ã‰tat automatique si la cellule est vide
+            ' État automatique si la cellule est vide
             etat = Trim$(CStr(lo.DataBodyRange.Cells(r, 10).Value))
             If Len(etat) = 0 Then
                 If av >= 100 Then
@@ -479,7 +493,7 @@ Public Sub RecalculerSaisie()
                 lo.DataBodyRange.Cells(r, 10).Value = etat
             End If
 
-            ' Retard : jours ouvrÃ©s entre la fin calculÃ©e et aujourd'hui
+            ' Retard : jours ouvrés entre la fin calculée et aujourd'hui
             If StrComp(etat, ETAT_T, vbTextCompare) <> 0 And fin < Date Then
                 retard = JoursOuvresEntre(fin + 1, Date)
             Else
@@ -492,7 +506,7 @@ Public Sub RecalculerSaisie()
 End Sub
 
 '--------------------------------------------------------------------------------
-' MISE Ã€ JOUR : grille de charge (feuille Charge)
+' MISE À JOUR : grille de charge (feuille Charge)
 '--------------------------------------------------------------------------------
 Public Sub MajCharge()
     Dim sEq As Worksheet, s As Worksheet
@@ -524,7 +538,7 @@ Public Sub MajCharge()
     s.Rows(1).RowHeight = 24
     FormatTitre s.Range("A1")
 
-    ' En-tÃªtes des semaines
+    ' En-têtes des semaines
     s.Range("A2").Value = "Pers. / Semaine"
     s.Range("A3").Value = "Lundi"
     For w = 0 To nbSem - 1
@@ -563,8 +577,8 @@ Public Sub MajCharge()
         r = r + 1
     Next i
 
-    ' Lignes Dispo Ã©quipe et TOTAL charge
-    s.Cells(r, 1).Value = "Dispo Ã©quipe (j)"
+    ' Lignes Dispo équipe et TOTAL charge
+    s.Cells(r, 1).Value = "Dispo équipe (j)"
     s.Cells(r, 1).Font.Italic = True
     s.Cells(r + 1, 1).Value = "TOTAL charge (j)"
     s.Cells(r + 1, 1).Font.Bold = True
@@ -588,7 +602,7 @@ Public Sub MajCharge()
 
     ' Grille des absences
     rAbs = rTot + 3
-    s.Cells(rAbs, 1).Value = "ABSENCES (C = congÃ©, F = formation : nombre de jours dans la semaine)"
+    s.Cells(rAbs, 1).Value = "ABSENCES (C = congé, F = formation : nombre de jours dans la semaine)"
     FormatTitre s.Cells(rAbs, 1)
     s.Cells(rAbs, 1).Font.Size = 11
     s.Cells(rAbs + 1, 1).Value = "Pers. / Semaine"
@@ -612,7 +626,7 @@ Public Sub MajCharge()
         For w = 0 To nbSem - 1
             lundi = debLundi + 7 * w
             vendredi = lundi + 4
-            nc = JoursAbsence(p, lundi, vendredi, "CongÃ©")
+            nc = JoursAbsence(p, lundi, vendredi, "Congé")
             nf = JoursAbsence(p, lundi, vendredi, "Formation")
             txt = ""
             If nc > 0 Then txt = "C" & Format$(nc, "0")
@@ -636,19 +650,19 @@ Public Sub MajCharge()
         Bordures s.Range(s.Cells(rAbs + 1, 1), s.Cells(rr - 1, 1 + nbSem))
     End If
 
-    ' LÃ©gende
+    ' Légende
     rLeg = rr + 2
-    s.Cells(rLeg, 1).Value = "LÃ‰GENDE"
+    s.Cells(rLeg, 1).Value = "LÉGENDE"
     FormatTitre s.Cells(rLeg, 1)
     s.Cells(rLeg, 1).Font.Size = 11
-    AjouterLegende s, rLeg + 1, coulVertClair, "Sous-charge : moins de " & Format$(seuilBas, "0%") & " de la capacitÃ©"
+    AjouterLegende s, rLeg + 1, coulVertClair, "Sous-charge : moins de " & Format$(seuilBas, "0%") & " de la capacité"
     AjouterLegende s, rLeg + 2, coulVert, "Charge correcte : entre " & Format$(seuilBas, "0%") & " et 100%"
-    AjouterLegende s, rLeg + 3, coulOrange, "Surcharge modÃ©rÃ©e : jusqu'Ã  " & Format$(seuilHaut, "0%")
-    AjouterLegende s, rLeg + 4, coulRouge, "Surcharge Ã©levÃ©e : plus de " & Format$(seuilHaut, "0%")
-    AjouterLegende s, rLeg + 5, coulConge, "CongÃ© (grille des absences)"
+    AjouterLegende s, rLeg + 3, coulOrange, "Surcharge modérée : jusqu'à " & Format$(seuilHaut, "0%")
+    AjouterLegende s, rLeg + 4, coulRouge, "Surcharge élevée : plus de " & Format$(seuilHaut, "0%")
+    AjouterLegende s, rLeg + 5, coulConge, "Congé (grille des absences)"
     AjouterLegende s, rLeg + 6, coulFormation, "Formation (grille des absences)"
-    AjouterLegende s, rLeg + 7, RGB(255, 255, 255), "Blanc : aucune tÃ¢che planifiÃ©e"
-    AjouterLegende s, rLeg + 8, coulIndispo, "Gris : aucun jour disponible (fÃ©riÃ©, absence)"
+    AjouterLegende s, rLeg + 7, RGB(255, 255, 255), "Blanc : aucune tâche planifiée"
+    AjouterLegende s, rLeg + 8, coulIndispo, "Gris : aucun jour disponible (férié, absence)"
 
     ' Largeurs de colonnes
     s.Columns(1).ColumnWidth = 22
@@ -664,7 +678,7 @@ Private Sub AjouterLegende(s As Worksheet, r As Long, coul As Long, texte As Str
 End Sub
 
 '--------------------------------------------------------------------------------
-' MISE Ã€ JOUR : rÃ©sumÃ© numÃ©rique (feuille RÃ©sumÃ©)
+' MISE À JOUR : résumé numérique (feuille Résumé)
 '--------------------------------------------------------------------------------
 Public Sub MajResume()
     Dim s As Worksheet
@@ -692,7 +706,7 @@ Public Sub MajResume()
 
     Application.ScreenUpdating = False
     s.Cells.Clear
-    s.Range("A1").Value = "RÃ‰SUMÃ‰ NUMÃ‰RIQUE DE LA CHARGE"
+    s.Range("A1").Value = "RÉSUMÉ NUMÉRIQUE DE LA CHARGE"
     s.Rows(1).RowHeight = 24
     FormatTitre s.Range("A1")
 
@@ -702,8 +716,8 @@ Public Sub MajResume()
     FormatTitre s.Cells(r, 1)
     s.Cells(r, 1).Font.Size = 11
     r = r + 1
-    EcrireLigne s, r, Array("PrÃ©nom", "Charge planifiÃ©e (j)", "Disponible (j)", "Taux de charge", _
-                            "Non commencÃ©es", "En cours", "TerminÃ©es", "Retard cumulÃ© (j)")
+    EcrireLigne s, r, Array("Prénom", "Charge planifiée (j)", "Disponible (j)", "Taux de charge", _
+                            "Non commencées", "En cours", "Terminées", "Retard cumulé (j)")
     StyleEntete s.Range(s.Cells(r, 1), s.Cells(r, 8))
     r = r + 1
     rD = r
@@ -743,11 +757,11 @@ Public Sub MajResume()
 
     ' ------------------------------------------------ PAR PROJET
     r = r + 1
-    s.Cells(r, 1).Value = "PAR PROJET (charge sur l'horizon, avancement pondÃ©rÃ© par la durÃ©e)"
+    s.Cells(r, 1).Value = "PAR PROJET (charge sur l'horizon, avancement pondéré par la durée)"
     FormatTitre s.Cells(r, 1)
     s.Cells(r, 1).Font.Size = 11
     r = r + 1
-    EcrireLigne s, r, Array("Projet", "Charge planifiÃ©e (j)", "Avancement moyen", "Nb tÃ¢ches", "TÃ¢ches en retard")
+    EcrireLigne s, r, Array("Projet", "Charge planifiée (j)", "Avancement moyen", "Nb tâches", "Tâches en retard")
     StyleEntete s.Range(s.Cells(r, 1), s.Cells(r, 5))
     r = r + 1
     rD = r
@@ -810,11 +824,11 @@ Public Sub MajResume()
 
     ' ------------------------------------------------ PAR SEMAINE
     r = r + 1
-    s.Cells(r, 1).Value = "PAR SEMAINE (Ã©quipe complÃ¨te)"
+    s.Cells(r, 1).Value = "PAR SEMAINE (équipe complète)"
     FormatTitre s.Cells(r, 1)
     s.Cells(r, 1).Font.Size = 11
     r = r + 1
-    EcrireLigne s, r, Array("Semaine", "Lundi", "Charge Ã©quipe (j)", "Dispo Ã©quipe (j)", "Taux")
+    EcrireLigne s, r, Array("Semaine", "Lundi", "Charge équipe (j)", "Dispo équipe (j)", "Taux")
     StyleEntete s.Range(s.Cells(r, 1), s.Cells(r, 5))
     r = r + 1
     rD = r
@@ -850,9 +864,9 @@ Public Sub MajResume()
         Bordures s.Range(s.Cells(rD - 1, 1), s.Cells(rF, 5))
     End If
 
-    ' ------------------------------------------------ TÃ‚CHES
+    ' ------------------------------------------------ TÂCHES
     r = r + 1
-    s.Cells(r, 1).Value = "TÃ‚CHES"
+    s.Cells(r, 1).Value = "TÂCHES"
     FormatTitre s.Cells(r, 1)
     s.Cells(r, 1).Font.Size = 11
     r = r + 1
@@ -885,11 +899,11 @@ Public Sub MajResume()
             Next i
         End If
     End If
-    EcrireLigne s, r, Array("Nombre total de tÃ¢ches", nTot): r = r + 1
-    EcrireLigne s, r, Array("Non commencÃ©es", nNCt): r = r + 1
+    EcrireLigne s, r, Array("Nombre total de tâches", nTot): r = r + 1
+    EcrireLigne s, r, Array("Non commencées", nNCt): r = r + 1
     EcrireLigne s, r, Array("En cours", nECt): r = r + 1
-    EcrireLigne s, r, Array("TerminÃ©es", nTt): r = r + 1
-    EcrireLigne s, r, Array("TÃ¢ches en retard", nRet): r = r + 1
+    EcrireLigne s, r, Array("Terminées", nTt): r = r + 1
+    EcrireLigne s, r, Array("Tâches en retard", nRet): r = r + 1
     s.Range(s.Cells(r - 5, 2), s.Cells(r - 1, 2)).NumberFormat = "0"
     s.Range(s.Cells(r - 6, 1), s.Cells(r - 1, 2)).Borders.LineStyle = xlContinuous
     If nRet > 0 Then
@@ -906,7 +920,7 @@ Public Sub MajResume()
 End Sub
 
 '--------------------------------------------------------------------------------
-' MISE Ã€ JOUR GLOBALE
+' MISE À JOUR GLOBALE
 '--------------------------------------------------------------------------------
 Public Sub MajTout()
     Dim noms As Variant, i As Long
@@ -914,7 +928,7 @@ Public Sub MajTout()
     For i = LBound(noms) To UBound(noms)
         If Feuille(CStr(noms(i))) Is Nothing Then
             MsgBox "La feuille '" & noms(i) & "' est absente." & vbCrLf & _
-                   "ExÃ©cutez d'abord la macro ConstruireClasseur.", vbExclamation
+                   "Exécutez d'abord la macro ConstruireClasseur.", vbExclamation
             Exit Sub
         End If
     Next i
@@ -928,11 +942,11 @@ Public Sub MajTout()
     Exit Sub
 Erreur:
     Application.ScreenUpdating = True
-    MsgBox "Erreur pendant la mise Ã  jour : " & Err.Description, vbExclamation
+    MsgBox "Erreur pendant la mise à jour : " & Err.Description, vbExclamation
 End Sub
 
 '--------------------------------------------------------------------------------
-' JOURS FÃ‰RIÃ‰S FRANÃ‡AIS (calcul automatique de PÃ¢ques, Ascension, PentecÃ´te)
+' JOURS FÉRIÉS FRANÇAIS (calcul automatique de Pâques, Ascension, Pentecôte)
 '--------------------------------------------------------------------------------
 Private Function DimanchePaques(an As Long) As Date
     Dim a As Long, b As Long, c As Long, d As Long, e As Long
@@ -965,35 +979,35 @@ Private Sub RemplirFeries(s As Worksheet, an As Long, ByRef ligne As Long)
     Dim paques As Date
     paques = DimanchePaques(an)
     AjouterFerie s, ligne, DateSerial(an, 1, 1), "Jour de l'an"
-    AjouterFerie s, ligne, paques + 1, "Lundi de PÃ¢ques"
-    AjouterFerie s, ligne, DateSerial(an, 5, 1), "FÃªte du travail"
+    AjouterFerie s, ligne, paques + 1, "Lundi de Pâques"
+    AjouterFerie s, ligne, DateSerial(an, 5, 1), "Fête du travail"
     AjouterFerie s, ligne, DateSerial(an, 5, 8), "Victoire 1945"
     AjouterFerie s, ligne, paques + 39, "Ascension"
-    AjouterFerie s, ligne, paques + 50, "Lundi de PentecÃ´te"
-    AjouterFerie s, ligne, DateSerial(an, 7, 14), "FÃªte nationale"
+    AjouterFerie s, ligne, paques + 50, "Lundi de Pentecôte"
+    AjouterFerie s, ligne, DateSerial(an, 7, 14), "Fête nationale"
     AjouterFerie s, ligne, DateSerial(an, 8, 15), "Assomption"
     AjouterFerie s, ligne, DateSerial(an, 11, 1), "Toussaint"
     AjouterFerie s, ligne, DateSerial(an, 11, 11), "Armistice"
-    AjouterFerie s, ligne, DateSerial(an, 12, 25), "NoÃ«l"
+    AjouterFerie s, ligne, DateSerial(an, 12, 25), "Noël"
 End Sub
 
 Public Sub AjouterFeriesAnnee()
     Dim rep As String, an As Long, s As Worksheet, ligne As Long
-    rep = InputBox("AnnÃ©e des jours fÃ©riÃ©s Ã  ajouter (par exemple 2028) :", "Jours fÃ©riÃ©s")
+    rep = InputBox("Année des jours fériés à ajouter (par exemple 2028) :", "Jours fériés")
     If Len(Trim$(rep)) = 0 Then Exit Sub
     If Not IsNumeric(rep) Then
-        MsgBox "AnnÃ©e invalide.", vbExclamation
+        MsgBox "Année invalide.", vbExclamation
         Exit Sub
     End If
     an = CLng(Val(rep))
     Set s = FeuilleReq(SH_FER)
     ligne = s.Cells(s.Rows.Count, 1).End(xlUp).Row + 1
     RemplirFeries s, an, ligne
-    MsgBox "Jours fÃ©riÃ©s de " & an & " ajoutÃ©s Ã  la feuille 'Jours FÃ©riÃ©s'.", vbInformation
+    MsgBox "Jours fériés de " & an & " ajoutés à la feuille 'Jours Fériés'.", vbInformation
 End Sub
 
 '--------------------------------------------------------------------------------
-' MISE EN FORME : petites procÃ©dures partagÃ©es
+' MISE EN FORME : petites procédures partagées
 '--------------------------------------------------------------------------------
 Private Sub FormatTitre(c As Range)
     c.Font.Bold = True
@@ -1029,8 +1043,8 @@ End Sub
 Public Sub ConstruireClasseur()
     Dim reponse As VbMsgBoxResult
     reponse = MsgBox("Cette macro construit (ou reconstruit) les 5 feuilles du planning :" & vbCrLf & _
-                     "Saisie, Charge, RÃ©sumÃ©, Ã‰quipe, Jours FÃ©riÃ©s." & vbCrLf & vbCrLf & _
-                     "Les donnÃ©es des anciennes versions de ces feuilles seront effacÃ©es." & vbCrLf & _
+                     "Saisie, Charge, Résumé, Équipe, Jours Fériés." & vbCrLf & vbCrLf & _
+                     "Les données des anciennes versions de ces feuilles seront effacées." & vbCrLf & _
                      "Continuer ?", vbYesNo + vbQuestion, "Construction du classeur")
     If reponse <> vbYes Then Exit Sub
 
@@ -1040,38 +1054,38 @@ Public Sub ConstruireClasseur()
     Dim s As Worksheet, lo As ListObject, lr As ListRow, btn As Button
     Dim ligne As Long, i As Long
 
-    ' ============================ FEUILLE Ã‰QUIPE ============================
+    ' ============================ FEUILLE ÉQUIPE ============================
     Set s = FeuilleNeuve(SH_EQ, RGB(128, 128, 128))
-    s.Range("A1").Value = "MEMBRES DE L'Ã‰QUIPE"
+    s.Range("A1").Value = "MEMBRES DE L'ÉQUIPE"
     FormatTitre s.Range("A1")
-    EcrireLigne s, 2, Array("PrÃ©nom", "CapacitÃ© (j/sem)", "RÃ´le / Notes")
+    EcrireLigne s, 2, Array("Prénom", "Capacité (j/sem)", "Rôle / Notes")
     StyleEntete s.Range("A2:C2")
     s.Range("A3").Value = "Alice": s.Range("B3").Value = 5
     s.Range("A4").Value = "Bruno": s.Range("B4").Value = 5
-    s.Range("A5").Value = "ChloÃ©": s.Range("B5").Value = 4: s.Range("C5").Value = "Temps partiel (4 j/sem)"
+    s.Range("A5").Value = "Chloé": s.Range("B5").Value = 4: s.Range("C5").Value = "Temps partiel (4 j/sem)"
     s.Range("A6").Value = "David": s.Range("B6").Value = 5
     Bordures s.Range("A2:C6")
 
-    s.Range("F1").Value = "ABSENCES (congÃ©s, formations...)"
+    s.Range("F1").Value = "ABSENCES (congés, formations...)"
     FormatTitre s.Range("F1")
-    EcrireLigne s, 2, Array("PrÃ©nom", "Type", "DÃ©but", "Fin", "Commentaire"), 6
+    EcrireLigne s, 2, Array("Prénom", "Type", "Début", "Fin", "Commentaire"), 6
     StyleEntete s.Range("F2:J2")
-    s.Range("F3").Value = "Alice": s.Range("G3").Value = "CongÃ©"
+    s.Range("F3").Value = "Alice": s.Range("G3").Value = "Congé"
     s.Range("H3").Value = DateSerial(2026, 12, 21): s.Range("I3").Value = DateSerial(2027, 1, 1)
-    s.Range("J3").Value = "CongÃ©s de fin d'annÃ©e"
+    s.Range("J3").Value = "Congés de fin d'année"
     s.Range("F4").Value = "Bruno": s.Range("G4").Value = "Formation"
     s.Range("H4").Value = DateSerial(2026, 11, 16): s.Range("I4").Value = DateSerial(2026, 11, 17)
-    s.Range("J4").Value = "Formation sÃ©curitÃ©"
+    s.Range("J4").Value = "Formation sécurité"
     s.Range("H3:I500").NumberFormat = "dd/mm/yyyy"
     Bordures s.Range("F2:J4")
 
-    s.Range("L1").Value = "PARAMÃˆTRES"
+    s.Range("L1").Value = "PARAMÈTRES"
     FormatTitre s.Range("L1")
-    s.Range("L2").Value = "DÃ©but de la grille (lundi, vide = auto)"
+    s.Range("L2").Value = "Début de la grille (lundi, vide = auto)"
     s.Range("L3").Value = "Nombre de semaines"
     s.Range("L4").Value = "Seuil sous-charge (%)"
     s.Range("L5").Value = "Seuil surcharge (%)"
-    s.Range("L6").Value = "CapacitÃ© par dÃ©faut (j/sem)"
+    s.Range("L6").Value = "Capacité par défaut (j/sem)"
     s.Range("M3").Value = 26
     s.Range("M4").Value = 80
     s.Range("M5").Value = 120
@@ -1090,30 +1104,30 @@ Public Sub ConstruireClasseur()
     s.Columns(12).ColumnWidth = 36
     s.Columns(13).ColumnWidth = 10
 
-    ' Validations de la feuille Ã‰quipe
+    ' Validations de la feuille Équipe
     With s.Range("F3:F500").Validation
         .Delete
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Formula1:="=ListeEquipe"
     End With
     With s.Range("G3:G500").Validation
         .Delete
-        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Formula1:="CongÃ©,Formation,Autre"
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Formula1:="Congé,Formation,Autre"
     End With
 
     ' Nom dynamique pour la liste des membres
     ThisWorkbook.Names.Add Name:="ListeEquipe", RefersTo:="=" & SH_EQ & "!$A$3:$A$200"
 
-    ' ============================ FEUILLE JOURS FÃ‰RIÃ‰S ============================
+    ' ============================ FEUILLE JOURS FÉRIÉS ============================
     Set s = FeuilleNeuve(SH_FER, RGB(128, 128, 128))
-    s.Range("A1").Value = "JOURS FÃ‰RIÃ‰S (France)"
+    s.Range("A1").Value = "JOURS FÉRIÉS (France)"
     FormatTitre s.Range("A1")
-    EcrireLigne s, 2, Array("Date", "LibellÃ©")
+    EcrireLigne s, 2, Array("Date", "Libellé")
     StyleEntete s.Range("A2:B2")
     ligne = 3
     RemplirFeries s, 2026, ligne
     RemplirFeries s, 2027, ligne
     s.Range(s.Cells(3, 1), s.Cells(ligne - 1, 1)).NumberFormat = "dd/mm/yyyy"
-    s.Range("D2").Value = "Ajoutez ici vos jours exceptionnels (ponts, fermeture d'entreprise...), puis relancez la mise Ã  jour."
+    s.Range("D2").Value = "Ajoutez ici vos jours exceptionnels (ponts, fermeture d'entreprise...), puis relancez la mise à jour."
     s.Range("D2").Font.Italic = True
     s.Range("D2").Font.Color = RGB(120, 120, 120)
     s.Columns(1).ColumnWidth = 12
@@ -1122,12 +1136,12 @@ Public Sub ConstruireClasseur()
 
     ' ============================ FEUILLE SAISIE ============================
     Set s = FeuilleNeuve(SH_SAI, RGB(0, 153, 0))
-    s.Range("A1").Value = "SAISIE DES TÃ‚CHES"
+    s.Range("A1").Value = "SAISIE DES TÂCHES"
     s.Rows(1).RowHeight = 24
     FormatTitre s.Range("A1")
-    EcrireLigne s, 2, Array("NÂ°", "PrÃ©nom", "Projet", "Description", "DurÃ©e (j ouvrÃ©s)", _
-                            "DÃ©but (vide = auto)", "DÃ©but effectif", "Fin calculÃ©e", _
-                            "Avancement (%)", "Ã‰tat", "Retard (j)", "Notes")
+    EcrireLigne s, 2, Array("N°", "Prénom", "Projet", "Description", "Durée (j ouvrés)", _
+                            "Début (vide = auto)", "Début effectif", "Fin calculée", _
+                            "Avancement (%)", "État", "Retard (j)", "Notes")
     Set lo = s.ListObjects.Add(xlSrcRange, s.Range("A2:L2"), , xlYes)
     lo.Name = "TblSaisie"
     On Error Resume Next
@@ -1138,24 +1152,24 @@ Public Sub ConstruireClasseur()
     s.Range("H2").Interior.Color = RGB(112, 134, 178)
     s.Range("K2").Interior.Color = RGB(112, 134, 178)
 
-    ' Exemples de tÃ¢ches (remplaÃ§ables par vos donnÃ©es)
+    ' Exemples de tâches (remplaçables par vos données)
     Set lr = lo.ListRows.Add
-    lr.Range.Value = Array(1, "Alice", "Projet Alpha", "Cadrage et spÃ©cifications", 5, _
+    lr.Range.Value = Array(1, "Alice", "Projet Alpha", "Cadrage et spécifications", 5, _
                            DateSerial(2026, 11, 9), Empty, Empty, 40, ETAT_EC, Empty, "")
     Set lr = lo.ListRows.Add
-    lr.Range.Value = Array(2, "Alice", "Projet Alpha", "DÃ©veloppement module A", 8, _
-                           Empty, Empty, Empty, 0, Empty, Empty, "DÃ©but vide : s'enchaÃ®ne sur la tÃ¢che nÂ°1")
+    lr.Range.Value = Array(2, "Alice", "Projet Alpha", "Développement module A", 8, _
+                           Empty, Empty, Empty, 0, Empty, Empty, "Début vide : s'enchaîne sur la tâche n°1")
     Set lr = lo.ListRows.Add
-    lr.Range.Value = Array(3, "Bruno", "Projet BÃªta", "Audit sÃ©curitÃ©", 3, _
-                           DateSerial(2026, 11, 11), Empty, Empty, 60, ETAT_EC, Empty, "Le 11/11 (fÃ©riÃ©) est sautÃ©")
+    lr.Range.Value = Array(3, "Bruno", "Projet Bêta", "Audit sécurité", 3, _
+                           DateSerial(2026, 11, 11), Empty, Empty, 60, ETAT_EC, Empty, "Le 11/11 (férié) est sauté")
     Set lr = lo.ListRows.Add
-    lr.Range.Value = Array(4, "ChloÃ©", "Projet Alpha", "Recette fonctionnelle", 6, _
+    lr.Range.Value = Array(4, "Chloé", "Projet Alpha", "Recette fonctionnelle", 6, _
                            Empty, Empty, Empty, 0, Empty, Empty, "")
     Set lr = lo.ListRows.Add
-    lr.Range.Value = Array(5, "David", "Projet Gamma", "RÃ©daction documentation", 2, _
+    lr.Range.Value = Array(5, "David", "Projet Gamma", "Rédaction documentation", 2, _
                            DateSerial(2026, 10, 26), Empty, Empty, 100, ETAT_T, Empty, "")
     Set lr = lo.ListRows.Add
-    lr.Range.Value = Array(6, "ChloÃ©", "Projet BÃªta", "Refonte de la page d'accueil", 4, _
+    lr.Range.Value = Array(6, "Chloé", "Projet Bêta", "Refonte de la page d'accueil", 4, _
                            Empty, Empty, Empty, 10, ETAT_EC, Empty, "")
 
     ' Formats de colonnes
@@ -1198,7 +1212,7 @@ Public Sub ConstruireClasseur()
              Formula1:=ETAT_NC & "," & ETAT_EC & "," & ETAT_T
     End With
 
-    ' Mises en forme conditionnelles (Ã‰tat et Retard)
+    ' Mises en forme conditionnelles (État et Retard)
     s.Range("J3:J1000").FormatConditions.Delete
     With s.Range("J3:J1000").FormatConditions.Add(xlCellValue, xlEqual, """" & ETAT_T & """")
         .Interior.Color = RGB(198, 239, 206)
@@ -1210,25 +1224,25 @@ Public Sub ConstruireClasseur()
         .Interior.Color = RGB(217, 217, 217)
     End With
     s.Range("K3:K1000").FormatConditions.Delete
-    With s.Range("K3:K1000").FormatConditions.Add(xlCellValue, xlGreaterThan, "0")
+    With s.Range("K3:K1000").FormatConditions.Add(xlCellValue, xlGreater, "0")
         .Font.Bold = True
         .Font.Color = RGB(192, 0, 0)
         .Interior.Color = RGB(255, 199, 206)
     End With
 
-    ' Aide contextuelle sur les en-tÃªtes
+    ' Aide contextuelle sur les en-têtes
     s.Range("F2").ClearComments
-    s.Range("F2").AddComment "Laissez vide pour enchaÃ®ner automatiquement aprÃ¨s la fin de la tÃ¢che prÃ©cÃ©dente de la mÃªme personne (ordre du tableau)."
+    s.Range("F2").AddComment "Laissez vide pour enchaîner automatiquement après la fin de la tâche précédente de la même personne (ordre du tableau)."
     s.Range("G2").ClearComments
-    s.Range("G2").AddComment "CalculÃ© automatiquement (date retenue aprÃ¨s jours fÃ©riÃ©s et absences)."
+    s.Range("G2").AddComment "Calculé automatiquement (date retenue après jours fériés et absences)."
     s.Range("H2").ClearComments
-    s.Range("H2").AddComment "CalculÃ©e automatiquement : durÃ©e en jours disponibles."
+    s.Range("H2").AddComment "Calculée automatiquement : durée en jours disponibles."
     s.Range("K2").ClearComments
-    s.Range("K2").AddComment "CalculÃ© : jours ouvrÃ©s entre la fin calculÃ©e et aujourd'hui si la tÃ¢che n'est pas terminÃ©e."
+    s.Range("K2").AddComment "Calculé : jours ouvrés entre la fin calculée et aujourd'hui si la tâche n'est pas terminée."
 
-    ' Bouton de mise Ã  jour
+    ' Bouton de mise à jour
     Set btn = s.Buttons.Add(200, 2, 190, 20)
-    btn.Caption = "Mettre Ã  jour le planning"
+    btn.Caption = "Mettre à jour le planning"
     btn.OnAction = "MajTout"
     btn.Font.Size = 10
     btn.Font.Bold = True
@@ -1239,18 +1253,18 @@ Public Sub ConstruireClasseur()
     s.Rows(1).RowHeight = 24
     FormatTitre s.Range("A1")
     Set btn = s.Buttons.Add(330, 2, 150, 20)
-    btn.Caption = "Mettre Ã  jour"
+    btn.Caption = "Mettre à jour"
     btn.OnAction = "MajTout"
     btn.Font.Size = 10
     btn.Font.Bold = True
 
-    ' ============================ FEUILLE RÃ‰SUMÃ‰ ============================
+    ' ============================ FEUILLE RÉSUMÉ ============================
     Set s = FeuilleNeuve(SH_RES, RGB(237, 125, 49))
-    s.Range("A1").Value = "RÃ‰SUMÃ‰ NUMÃ‰RIQUE DE LA CHARGE"
+    s.Range("A1").Value = "RÉSUMÉ NUMÉRIQUE DE LA CHARGE"
     s.Rows(1).RowHeight = 24
     FormatTitre s.Range("A1")
     Set btn = s.Buttons.Add(330, 2, 150, 20)
-    btn.Caption = "Mettre Ã  jour"
+    btn.Caption = "Mettre à jour"
     btn.OnAction = "MajTout"
     btn.Font.Size = 10
     btn.Font.Bold = True
@@ -1275,10 +1289,10 @@ Public Sub ConstruireClasseur()
     ThisWorkbook.Worksheets(SH_EQ).Move After:=ThisWorkbook.Worksheets(SH_RES)
     ThisWorkbook.Worksheets(SH_FER).Move After:=ThisWorkbook.Worksheets(SH_EQ)
 
-    ' PremiÃ¨re mise Ã  jour : dates, grille de charge et rÃ©sumÃ©
+    ' Première mise à jour : dates, grille de charge et résumé
     MajTout
 
-    ' Volets figÃ©s
+    ' Volets figés
     ThisWorkbook.Worksheets(SH_SAI).Activate
     ThisWorkbook.Worksheets(SH_SAI).Range("C3").Select
     ActiveWindow.FreezePanes = True
@@ -1289,11 +1303,11 @@ Public Sub ConstruireClasseur()
     ThisWorkbook.Worksheets(SH_SAI).Range("A3").Select
 
     Application.ScreenUpdating = True
-    MsgBox "Le classeur est prÃªt !" & vbCrLf & vbCrLf & _
-           "- Saisissez vos tÃ¢ches dans la feuille Saisie" & vbCrLf & _
-           "- Configurez l'Ã©quipe, les congÃ©s, formations et jours fÃ©riÃ©s" & vbCrLf & _
-           "- Cliquez sur 'Mettre Ã  jour le planning' aprÃ¨s chaque modification" & vbCrLf & vbCrLf & _
-           "Pensez Ã  enregistrer le fichier au format .xlsm.", vbInformation, "Planning d'Ã©quipe"
+    MsgBox "Le classeur est prêt !" & vbCrLf & vbCrLf & _
+           "- Saisissez vos tâches dans la feuille Saisie" & vbCrLf & _
+           "- Configurez l'équipe, les congés, formations et jours fériés" & vbCrLf & _
+           "- Cliquez sur 'Mettre à jour le planning' après chaque modification" & vbCrLf & vbCrLf & _
+           "Pensez à enregistrer le fichier au format .xlsm.", vbInformation, "Planning d'équipe"
     Exit Sub
 Erreur:
     Application.ScreenUpdating = True
